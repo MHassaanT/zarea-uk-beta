@@ -1,28 +1,23 @@
-// pages/api/webhook.js
-export default function handler(req, res) {
-  if (req.method === "GET") {
-    // Meta Verification Step
-    const VERIFY_TOKEN = "zarea_secret_token"; // set your own token
-    
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
+import { NextRequest, NextResponse } from "next/server";
 
-    if (mode && token) {
-      if (mode === "subscribe" && token === VERIFY_TOKEN) {
-        console.log("✅ Webhook verified!");
-        res.status(200).send(challenge);
-      } else {
-        res.sendStatus(403);
-      }
-    }
-  } else if (req.method === "POST") {
-    // Incoming messages/events from Meta
-    console.log("📩 Webhook event received:", req.body);
+export async function GET(req: NextRequest) {
+  // Meta webhook verification
+  const url = new URL(req.url);
+  const mode = url.searchParams.get("hub.mode");
+  const token = url.searchParams.get("hub.verify_token");
+  const challenge = url.searchParams.get("hub.challenge");
 
-    res.status(200).send("EVENT_RECEIVED");
+  if (mode === "subscribe" && token === process.env.META_VERIFY_TOKEN) {
+    return new NextResponse(challenge, { status: 200 });
   } else {
-    res.setHeader("Allow", ["GET", "POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return new NextResponse("Forbidden", { status: 403 });
   }
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  console.log("📩 Webhook event:", JSON.stringify(body, null, 2));
+
+  // For now, just acknowledge
+  return new NextResponse("EVENT_RECEIVED", { status: 200 });
 }
